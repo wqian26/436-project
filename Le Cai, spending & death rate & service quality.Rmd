@@ -1,0 +1,78 @@
+---
+title: "Relationship between Spending & Death rate for each hospital"
+author: "Le Cai"
+date: "2024-11-2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+     
+```
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+
+```{r}
+data <- read_csv("https://uwmadison.box.com/shared/static/xhquwhtcswxao72jzn7ufpcj0vwmwp7o.csv")
+
+new_data <- data %>%
+  rename(part_b_total_spend = 'Part B Spending per Decedent during the Last Two Years of Life',
+         ambulance_spend = 'Ambulance spending per Decedent during the last two years of life',
+         other_spend = 'Other spending per Decedent during the last two years of life',
+         death_percentage='Percent of Deaths Occurring In Hospital',
+         physician_visits ='Physician Visits per Decedent during the Last Two Years of Life')%>%
+  select(part_b_total_spend, ambulance_spend, other_spend,death_percentage,physician_visits)
+
+new_data <- new_data |>
+  mutate(
+    ambulance_spend = as.numeric(gsub(",", "", ambulance_spend))
+  )|>
+  mutate(Sum_spending_last_two_year = part_b_total_spend + ambulance_spend + other_spend)
+
+new_data <- new_data |> # filter only positive death_percentage
+  filter(death_percentage > 0)
+```
+
+
+```{r}
+#first scatterplot
+model <- loess(death_percentage ~ Sum_spending_last_two_year, data = new_data) #Local Regression, since I want a flexible approach to model smooth curves based on local fitting.
+summary(model)
+rse <- sqrt(sum(model$residuals^2) / (length(model$residuals) - 2))
+
+scatter_plot <- ggplot(new_data, aes(x = Sum_spending_last_two_year, y = death_percentage)) +
+  geom_point()+
+  geom_smooth(method = "loess", se = TRUE, color = "blue") +  # Add non-linear regression line
+  labs(title = "Scatter Plot of Spending vs. Percent of Deaths in Hospital",
+       x = "Total Spending per Decedent in Last Two Years of Life",
+       y = "Percent of Deaths Occurring In Hospital") +
+  theme_minimal()+
+  annotate("text", x = Inf, y = Inf, label = paste("Residual Standard Error:", round(rse, 3)), 
+           hjust = 1.1, vjust = 1.5, size = 4, color = "red")
+
+print(scatter_plot)
+
+
+#second scatterplot
+model <- loess(physician_visits ~ Sum_spending_last_two_year, data = new_data)
+summary(model)
+rse <- sqrt(sum(model$residuals^2) / (length(model$residuals) - 2))
+
+scatter_plot <- ggplot(new_data, aes(x = Sum_spending_last_two_year, y = physician_visits)) +
+  geom_point()+
+  geom_smooth(method = "loess", se = TRUE, color = "blue") +  # Add non-linear regression line
+  labs(title = "Scatter Plot of Spending vs. Percent of Deaths in Hospital",
+       x = "Total Spending per Decedent in Last Two Years of Life",
+       y = "Physician Visits per Decedent in Last Two Years of Life") +
+  theme_minimal()+
+  annotate("text", x = Inf, y = Inf, label = paste("Residual Standard Error:", round(rse, 3)), 
+           hjust = 1.1, vjust = 1.5, size = 4, color = "red")
+print(scatter_plot)
+```
+
+
