@@ -1,0 +1,33 @@
+---
+title: "Project MS 2"
+output: html_document
+date: "2024-11-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+data = read.csv("https://raw.githubusercontent.com/wqian26/436-project/main/state_eolchronic_dead6699ffs.csv")
+data$Year = as.numeric(data$Year)
+
+data = data %>%
+  arrange(Geo_Name, Year) |>
+  group_by(Geo_Name) |>
+  mutate(lagged_adjusted = lag(Adjusted_Rate)) |>
+  ungroup()|>
+  filter(!is.na(lagged_adjusted))
+
+ggplot(data, aes(x = lagged_adjusted, y = Adjusted_Rate)) +
+  geom_point(alpha = 0.5) +
+  labs(title = "Lag Plot of Adjusted Rate",
+       x = "Adjusted Rate (Previous Year)",
+       y = "Adjusted Rate (Current Year)") +
+  theme_minimal()+
+  facet_wrap(~ Year)
+```
+
