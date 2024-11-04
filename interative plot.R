@@ -1,10 +1,9 @@
-```{r setup, include=FALSE}
+
 knitr::opts_chunk$set(echo = TRUE)
-```
 
-```{r}
+
+
 rm(list = ls())
-
 # Install and load required packages
 install_packages_if_not_present <- function(x) {
   if (sum(!x %in% installed.packages())) {
@@ -144,7 +143,7 @@ allowed_vars <- c(
 )
 
 
-
+# functions for plotting
 stateMap <- function(merged_data, us_mainland, state_var, title = "US Map", palette = "viridis") {
   state_data <- merged_data %>%
     group_by(state_name) %>%
@@ -220,12 +219,12 @@ scatterPlot <- function(filtered_cities, scatter_x, scatter_y, title = "Scatter 
 
 
 ui <- fluidPage(
-  titlePanel("Healthcare Data Visualization"),
+  titlePanel("Healthcare Data Visualization on Hospitals -- Find your preferred provider"),
   
   fluidRow(
     column(12, 
-           h4("This application visualizes healthcare data at both state and hospital levels, 
-          allowing you to explore relationships between different variables."),
+           h4("This application visualizes healthcare data at both state and hospital levels, the spendings and reimbursement is the key focus here.  
+          You can explore whatever variable you like to find customize the selection of hospitals.   You can also explore relationships between different variables in your interests."),
            p("Use the selection options below to choose variables for the state and hospital maps, as well as for the scatter plot. 
          The state map aggregates data by state, the hospital map shows detailed data for hospitals within a selected state, 
          and the scatter plot allows for variable comparisons within the selected state.")
@@ -329,7 +328,7 @@ server <- function(input, output, session) {
             color = "#1c96c5", size = 2, alpha = 0.6) +
             geom_point(data = selected_hospital_data, 
                        aes_string(x = input$scatter_x, y = input$scatter_y),
-                       color = "pink", size = 2, alpha = 1) +
+                       color = "pink", size = 4, alpha = 1) +
             labs(x = names(allowed_vars)[allowed_vars == input$scatter_x], 
                  y = names(allowed_vars)[allowed_vars == input$scatter_y], 
                  title = paste("Scatter Plot of", names(allowed_vars)[allowed_vars == input$scatter_x], 
@@ -347,6 +346,3 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 
 
-
-
-```
