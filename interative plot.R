@@ -144,7 +144,8 @@ allowed_vars <- c(
 
 
 # functions for plotting
-stateMap <- function(merged_data, us_mainland, state_var, title = "US Map", palette = "viridis") {
+# "viridis"
+stateMap <- function(merged_data, us_mainland, state_var, title = "US Map", palette = c('#e0ecf4','#9ebcda', '#8856a7','#810f7c')) {
   state_data <- merged_data %>%
     group_by(state_name) %>%
     summarise(selected_value = sum(.data[[state_var]], na.rm = TRUE))
@@ -158,7 +159,7 @@ stateMap <- function(merged_data, us_mainland, state_var, title = "US Map", pale
     addProviderTiles(providers$CartoDB.Positron) %>%
     addPolygons(
       fillColor = ~pal(selected_value),
-      fillOpacity = 0.7, color = "#BDBDC3", weight = 1,
+      fillOpacity = 0.95, color = "#BDBDC3", weight = 1,
       layerId = ~NAME,
       popup = ~paste(NAME, "<br>", names(allowed_vars)[allowed_vars == state_var], ": ", selected_value)
     ) %>%
@@ -171,7 +172,7 @@ stateMap <- function(merged_data, us_mainland, state_var, title = "US Map", pale
     addControl(title, position = "topright")
 }
 cityMap <- function(filtered_cities, map_var, title = "City Map") {
-  pal <- colorNumeric(palette = c('#1c96c5', '#FFC0CB'), domain = filtered_cities[[map_var]], na.color = "transparent")
+  pal <- colorNumeric(palette = c('#e0ecf4','#9ebcda', '#8856a7','#810f7c'), domain = filtered_cities[[map_var]], na.color = "transparent")
   
   leaflet(filtered_cities) %>%
     addProviderTiles(providers$CartoDB.Positron) %>%
@@ -199,7 +200,7 @@ cityMap <- function(filtered_cities, map_var, title = "City Map") {
     addControl(title, position = "topright")
 }
 
-scatterPlot <- function(filtered_cities, scatter_x, scatter_y, title = "Scatter Plot", color = "#1c96c5") {
+scatterPlot <- function(filtered_cities, scatter_x, scatter_y, title = "Scatter Plot", color = "#9ebcda") {
   plot <- ggplot(filtered_cities, aes_string(x = scatter_x, y = scatter_y)) +
     geom_point(aes(text = paste("City:", city,
                                 "<br>Hospital:", hospital_name,
@@ -325,10 +326,11 @@ server <- function(input, output, session) {
                 names(allowed_vars)[allowed_vars == input$scatter_y], ":", get(input$scatter_y)
               )
             ),
-            color = "#1c96c5", size = 2, alpha = 0.6) +
+           # c('#e0ecf4','#9ebcda', '#8856a7')
+            color = "#9ebcda", size = 2, alpha = 0.6) +
             geom_point(data = selected_hospital_data, 
                        aes_string(x = input$scatter_x, y = input$scatter_y),
-                       color = "pink", size = 4, alpha = 1) +
+                       color = "#dd1c77", size = 4, alpha = 1) +
             labs(x = names(allowed_vars)[allowed_vars == input$scatter_x], 
                  y = names(allowed_vars)[allowed_vars == input$scatter_y], 
                  title = paste("Scatter Plot of", names(allowed_vars)[allowed_vars == input$scatter_x], 
