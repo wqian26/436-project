@@ -1,0 +1,191 @@
+---
+title: "random forest, correlation"
+author: "Le Cai"
+date: "2024-12-6"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+     
+```
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(readr)
+library(shiny)
+#library(glue)
+#library(bslib)
+library(DT)
+library(ggplot2)
+library(plotly)
+library(randomForest)
+library(reshape2)
+```
+
+
+```{r}
+data <- read_csv("https://uwmadison.box.com/shared/static/xhquwhtcswxao72jzn7ufpcj0vwmwp7o.csv")
+
+data <- data %>%
+  # clean up the names
+  rename(
+    hrr = `HRR`,
+    city = `City`,
+    state = `State`,
+    system = `System`,
+    provider_id = `Provider ID`,
+    hospital_name = `Hospital Name`,
+    deaths_chronically_ill = `Number of deaths among chronically ill patients assigned to hospital`,
+    inpatient_days = `Inpatient Days per Decedent during the Last Two Years of Life`,
+    icu_deaths = `Percent of Deaths Associated With ICU Admission`,
+    hospice_enrolled = `Percent of Decedents Enrolled In Hospice during the Last Six Months of Life`,
+    pct_inpatient_days = `Percent of enrollees medical inpatient days at hospital to which they were assigned`,
+    care_intensity_idx = `Hospital Care Intensity Index during the Last Two Years of Life`,
+    
+    # reimbursements (suffix '_reimburse')
+    medicare_total_reimburse = `Total Medicare Reimbursements per Decedent during the Last Two Years of Life`,
+    inpatient_reimburse = `Inpatient Sector Reimbursements per Decedent during the Last Two Years of Life`,
+    outpatient_reimburse = `Outpatient Sector Reimbursements per Decedent during the Last Two Years of Life`,
+    snf_reimburse = `SNF/Long-Term Care Sector Reimbursements per Decedent during the Last Two Years of Life`,
+    home_health_reimburse = `Home Health Sector Reimbursements per Decedent during the Last Two Years of Life`,
+    hospice_reimburse = `Hospice Sector Reimbursements per Decedent during the Last Two Years of Life`,
+    dme_reimburse = `Reimbursements for Durable Medical Equipment per Decedent during the Last Two Years of Life`,
+    hospital_reimburse = `Hospital reimbursements per Decedent during the last two years of life`,
+    per_day_reimburse = `Reimbursements per patient day (calculated)`,
+    hosp_reimburse_ratio = `Hospital Reimbursements: Ratio to US Average (calculated)`,
+    reimburse_day_ratio = `Reimbursements per Day: Ratio to US Average (calculated)`,
+    
+    # spending (suffix '_spend')
+    ambulance_spend = `Ambulance spending per Decedent during the last two years of life`,
+    other_spend = `Other spending per Decedent during the last two years of life`,
+    part_b_total_spend = `Part B Spending per Decedent during the Last Two Years of Life`,
+    part_b_eval_manage_spend = `Part B Spending for Evaluation & Management per Decedent during the Last Two Years of Life`,
+    part_b_procedures_spend = `Part B Spending for Procedures per Decedent during the Last Two Years of Life`,
+    part_b_imaging_spend = `Part B Spending for Imaging per Decedent during the Last Two Years of Life`,
+    part_b_tests_spend = `Part B Spending for Tests per Decedent during the Last Two Years of Life`,
+    part_b_other_spend = `Other Part B spending per Decedent during the last two years of life`,
+    
+    # payments (suffix '_payment')
+    physician_payment = `Payments for physician visits per Decedent during the last two years of life`,
+    physician_payment_per_visit = `Payments per physician visit (calculated)`,
+    physician_payment_ratio = `Physician visit payments: Ratio to US Average (calculated)`,
+    
+    # average co-payments
+    avg_copay_total = `Average Co-Payments per Decedent during the Last Two Years of Life`,
+    avg_copay_physician = `Average Co-Payments for Physician Services per Decedent during the Last Two Years of Life`,
+    avg_copay_dme = `Average Co-Payments for Durable Medical Equipment per Decedent during the Last Two Years of Life`
+  ) %>%
+  # select the economic related variables
+  select(
+    hrr, city, state, system, provider_id, hospital_name,
+    deaths_chronically_ill, pct_inpatient_days, care_intensity_idx,
+    medicare_total_reimburse, inpatient_reimburse, outpatient_reimburse,
+    snf_reimburse, home_health_reimburse, hospice_reimburse, dme_reimburse,
+    hospital_reimburse, per_day_reimburse, hosp_reimburse_ratio, reimburse_day_ratio,
+    ambulance_spend, other_spend, part_b_total_spend, part_b_eval_manage_spend,
+    part_b_procedures_spend, part_b_imaging_spend, part_b_tests_spend, part_b_other_spend,
+    physician_payment, physician_payment_per_visit, physician_payment_ratio,
+    avg_copay_total, avg_copay_physician,avg_copay_dme,
+    inpatient_days,icu_deaths,hospice_enrolled,pct_inpatient_days
+  ) %>%
+  # check the numericalbility
+  mutate(across(c(
+    deaths_chronically_ill, pct_inpatient_days, care_intensity_idx,
+    medicare_total_reimburse, inpatient_reimburse, outpatient_reimburse,
+    snf_reimburse, home_health_reimburse, hospice_reimburse, dme_reimburse,
+    hospital_reimburse, per_day_reimburse, hosp_reimburse_ratio, reimburse_day_ratio,
+    ambulance_spend, other_spend, part_b_total_spend, part_b_eval_manage_spend,
+    part_b_procedures_spend, part_b_imaging_spend, part_b_tests_spend, part_b_other_spend,
+    physician_payment, physician_payment_per_visit, physician_payment_ratio,
+    avg_copay_total, avg_copay_physician, avg_copay_dme,
+    inpatient_days,icu_deaths,hospice_enrolled,pct_inpatient_days
+  ), ~as.numeric(gsub(",", "", .)))) %>%
+  mutate(across(
+    c(
+      deaths_chronically_ill, pct_inpatient_days, care_intensity_idx,
+      medicare_total_reimburse, inpatient_reimburse, outpatient_reimburse,
+      snf_reimburse, home_health_reimburse, hospice_reimburse, dme_reimburse,
+      hospital_reimburse, per_day_reimburse, hosp_reimburse_ratio, reimburse_day_ratio,
+      ambulance_spend, other_spend, part_b_total_spend, part_b_eval_manage_spend,
+      part_b_procedures_spend, part_b_imaging_spend, part_b_tests_spend, part_b_other_spend,
+      physician_payment, physician_payment_per_visit, physician_payment_ratio,
+      avg_copay_total, avg_copay_physician, avg_copay_dme,
+      inpatient_days,icu_deaths,hospice_enrolled,pct_inpatient_days
+    ), ~ ifelse(. < 0, NA, .)
+  ))
+
+
+numeric_data <- data %>%
+  select_if(is.numeric) %>%
+  select(deaths_chronically_ill, pct_inpatient_days,
+    medicare_total_reimburse,
+    ambulance_spend, other_spend, part_b_total_spend,
+    physician_payment, physician_payment_per_visit,
+    avg_copay_total, avg_copay_physician,avg_copay_dme,
+    inpatient_days,icu_deaths,hospice_enrolled) %>%
+  na.omit()
+
+rf_model <- randomForest(deaths_chronically_ill ~ ., data = numeric_data, importance = TRUE)
+
+importance_df <- as.data.frame(importance(rf_model)) %>%
+  rownames_to_column(var = "Feature") %>%
+  arrange(desc(IncNodePurity))%>%
+  na.omit()
+
+
+ggplot(importance_df, aes(x = reorder(Feature, IncNodePurity), y = IncNodePurity)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +  # Flip the axis for better readability
+  labs(title = "Random Forest Feature Importance on Number of deaths \n among chronically ill patients assigned to hospital",
+       x = "Features",
+       y = "Importance (IncNodePurity)") +
+  theme_minimal() +
+  theme(axis.text.y = element_text(size = 10))  # Adjust text size if needed
+
+
+```
+
+
+```{r}
+cor_matrix <- cor(numeric_data)
+
+# Extract correlations with 'deaths_chronically_ill'
+cor_with_deaths <- cor_matrix["deaths_chronically_ill", ]
+cor_with_deaths <- cor_with_deaths[cor_with_deaths != 1]
+# Convert to a data frame
+cor_df <- data.frame(
+  Feature = names(cor_with_deaths),
+  Correlation = cor_with_deaths
+)
+
+# Melt the correlation data for ggplot
+cor_df_melted <- melt(cor_df, id.vars = "Feature")
+
+cor_df_melted$Feature <- reorder(cor_df_melted$Feature, cor_df_melted$value, FUN = function(x) { x })
+
+# Create the bar plot
+ggplot(cor_df_melted, aes(x = Feature, y = value, fill = value)) +
+  geom_bar(stat = "identity") +  # Use bar plot for clear visibility
+  scale_fill_gradient2(
+    low = "steelblue", high = "#D5006D", 
+    name = "Correlation"
+  ) +  # Set the color gradient from blue (negative) to red (positive)
+  labs(
+    title = "Correlation of Features with Deaths Among Chronically Ill Patients",
+    x = "Features",
+    y = "Correlation Coefficient"
+  ) +
+  theme_minimal() +
+  coord_flip() +  # Flip the coordinates (horizontal bars)
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_text(angle = 0),
+    axis.title = element_text(size = 12),
+    plot.title = element_text(size = 14, face = "bold")
+  )
+```
+
